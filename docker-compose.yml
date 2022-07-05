@@ -17,8 +17,7 @@ services:
   api:
     build: ./
     volumes:
-      - ./app:/var/www/app
-      - ./tests:/var/www/tests
+      - ./:/var/www
     environment:
       DB_USER: ${DB_USER:-dbuser}
       DB_PASSWORD: ${DB_PASSWORD:-password}
