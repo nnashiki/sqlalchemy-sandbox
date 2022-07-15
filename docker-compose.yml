@@ -10,13 +10,14 @@ services:
       MYSQL_USER: ${MYSQL_USER:-dbuser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
     volumes:
-      - sasand-db-volume:/var/lib/mysql
+      - sa-sand-db-volume:/var/lib/mysql
       - ./db/cnf:/etc/mysql/conf.d
     ports:
       - "${MYSQL_PORT:-3306}:3306"
   api:
     build: ./
     volumes:
+      - sa-sand-poetry-volume:/var/www/.venv
       - ./:/var/www
     environment:
       DB_USER: ${DB_USER:-dbuser}
@@ -27,5 +28,8 @@ services:
     depends_on:
         - db
 volumes:
-  sasand-db-volume:
+  sa-sand-db-volume:
     external: true
+  sa-sand-poetry-volume:
+    external: true
+
