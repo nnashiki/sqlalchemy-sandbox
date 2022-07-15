@@ -1,18 +1,17 @@
+from datetime import datetime
+
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.schema import Column
-from sqlalchemy.schema import ForeignKey
+from sqlalchemy.schema import Column, ForeignKey
 from sqlalchemy.sql.functions import random
 from sqlalchemy.sql.schema import UniqueConstraint
 from sqlalchemy.sql.sqltypes import DATETIME
 from sqlalchemy.types import Integer, String
 
-from datetime import datetime
+Base = declarative_base()
 
-Base=declarative_base()
 
 class BaseModel(Base):
     __abstract__ = True
-    id = Column(Integer, primary_key=True, autoincrement=True)
     created = Column(DATETIME, default=datetime.now)
     modified = Column(DATETIME, default=datetime.now)
 
@@ -20,41 +19,28 @@ class BaseModel(Base):
         self.created = datetime.now
         self.modified = datetime.now
 
+
 class User(BaseModel):
-    """
-    service users.
-    """
-    __tablename__ = "users"
-    email = Column(String(255), unique=True)
-    password = Column(String(255))
+    __tablename__ = "user_account"
 
-    def __init__(self, email, password):
-        self.email = email
-        self.password = password
+    id = Column(Integer, primary_key=True)
+    name = Column(String(30))
+    fullname = Column(String)
 
-class Match(BaseModel):
-    __tablename__ = "matches"
-    seed = Column(Integer, nullable=False)
+    addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
 
-    def __init__(self):
-        self.seed = random.randint()
+    def __repr__(self):
+        return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
-class MatchUser(BaseModel):
-    __table_args__= ((UniqueConstraint("match_id", "user_id"), ))
-    __tablename__ = "match_users"
-    match_id = Column(Integer, ForeignKey("matches.id", onupdate="cascade", ondelete="cascade"))
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    def __init__(self, match_id, user_id):
-        self.match_id = match_id
-        self.user_id = user_id
+class Address(BaseModel):
+    __tablename__ = "address"
 
-class MatchTurn(BaseModel):
-    __tablename__ = "match_turns"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    match_id = Column(Integer, ForeignKey("matches.id", onupdate="cascade", ondelete="cascade"))
-    no = Column(Integer, nullable=False)
+    id = Column(Integer, primary_key=True)
+    email_address = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("user_account.id"), nullable=False)
 
-    def __init__(self, match_id, no):
-        self.match_id = match_id
-        self.no = no
+    user = relationship("User", back_populates="addresses")
+
+    def __repr__(self):
+        return f"Address(id={self.id!r}, email_address={self.email_address!r})"

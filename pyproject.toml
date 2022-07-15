@@ -6,7 +6,7 @@ authors = ["Niten Nashiki <n.nashiki.work@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-alembic = "^1.8.0"
+alembic = {extras = ["tz"], version = "^1.8.1"}
 SQLAlchemy = "^1.4.39"
 PyMySQL = "^1.0.2"
 taskipy = "^1.10.2"
