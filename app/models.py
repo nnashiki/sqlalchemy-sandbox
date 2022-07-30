@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column, ForeignKey
 from sqlalchemy.sql.functions import random
@@ -7,10 +8,18 @@ from sqlalchemy.sql.schema import UniqueConstraint
 from sqlalchemy.sql.sqltypes import DATETIME
 from sqlalchemy.types import Integer, String
 
-Base = declarative_base()
+convention = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+metadata = MetaData(naming_convention=convention)
+_Base = declarative_base(metadata=metadata)
 
 
-class BaseModel(Base):
+class BaseModel(_Base):
     __abstract__ = True
     created = Column(DATETIME, default=datetime.now)
     modified = Column(DATETIME, default=datetime.now)
@@ -19,28 +28,10 @@ class BaseModel(Base):
         self.created = datetime.now
         self.modified = datetime.now
 
-
-class User(BaseModel):
-    __tablename__ = "user_account"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(30))
-    fullname = Column(String)
-
-    addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
+    def __repr__(self) -> str:
+        columns = ", ".join(
+            [f"{k}={repr(v)}" for k, v in self.__dict__.items() if not k.startswith("_")]
+        )
+        return f"<{self.__class__.__name__}({columns})>"
 
 
-class Address(BaseModel):
-    __tablename__ = "address"
-
-    id = Column(Integer, primary_key=True)
-    email_address = Column(String, nullable=False)
-    user_id = Column(Integer, ForeignKey("user_account.id"), nullable=False)
-
-    user = relationship("User", back_populates="addresses")
-
-    def __repr__(self):
-        return f"Address(id={self.id!r}, email_address={self.email_address!r})"
