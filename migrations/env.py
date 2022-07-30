@@ -14,14 +14,21 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from app.models import Base
+from app.models import _Base
 
-target_metadata = Base.metadata
+target_metadata = _Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def include_object(obj, name, type_, reflected, compare_to):
+    if obj.info.get("skip_autogen", False):
+        return False
+
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -42,6 +49,11 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        # MATERIALIZED VIEW など無視する場合は下記をクラス属性に設定する
+        # __table_args__ = {"info": {"skip_autogen": True}}
+        include_object=include_object,
+        # 型変更を検知する
+        compare_type=True,
     )
 
     with context.begin_transaction():
@@ -62,7 +74,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            # MATERIALIZED VIEW など無視する場合は下記をクラス属性に設定する
+            # __table_args__ = {"info": {"skip_autogen": True}}
+            include_object=include_object,
+            # 型変更を検知する
+            compare_type=True,
+        )
 
         with context.begin_transaction():
             context.run_migrations()
