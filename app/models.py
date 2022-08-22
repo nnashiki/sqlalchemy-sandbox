@@ -1,9 +1,14 @@
-from datetime import datetime
 import uuid
+from datetime import datetime
 
-from sqlalchemy import (Column, MetaData, func, UniqueConstraint, ForeignKey)
-from sqlalchemy.types import Integer, String, DateTime
-from sqlalchemy.orm import declarative_mixin, declared_attr, relationship, declarative_base
+from sqlalchemy import Column, ForeignKey, MetaData, UniqueConstraint, func
+from sqlalchemy.orm import (
+    declarative_base,
+    declarative_mixin,
+    declared_attr,
+    relationship,
+)
+from sqlalchemy.types import DateTime, Integer, String
 
 convention = {
     "ix": "ix_%(column_0_label)s",
@@ -59,3 +64,12 @@ class User(HasTenantMixin, BaseModel):
     __tablename__ = "users"
     __table_args__ = (UniqueConstraint("name"), {})
     name = Column(String(255), nullable=False)
+
+
+class Team(BaseModel):
+    __tablename__ = "teams"
+    __table_args__ = (UniqueConstraint("name"), {})
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    tenant_id = Column(String(36), ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    tenant = relationship("Tenant", back_populates="teams")

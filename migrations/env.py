@@ -1,7 +1,19 @@
 from logging.config import fileConfig
+from typing import Sequence, Union
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from alembic.autogenerate import rewriter
+from alembic.operations import ops
+from alembic.operations.ops import MigrationScript
+from alembic.script import ScriptDirectory
+from sqlalchemy import (
+    Column,
+    Constraint,
+    UniqueConstraint,
+    engine_from_config,
+    exc,
+    pool,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -31,6 +43,58 @@ def include_object(obj, name, type_, reflected, compare_to):
     return True
 
 
+def process_revision_directives(context, revision, directives):
+    # extract Migration
+    migration_script = directives[0]
+    # extract current head revision
+    head_revision = ScriptDirectory.from_config(context.config).get_current_head()
+
+    # マイグレーションの rev_id をカスタムルールで上書きする
+    if head_revision is None:
+        # edge case with first migration
+        new_rev_id = 1
+    else:
+        # default branch with incrementation
+        last_rev_id = int(head_revision.lstrip("0"))
+        new_rev_id = last_rev_id + 1
+    # fill zeros up to 4 digits: 1 -> 0001
+    migration_script.rev_id = "{0:04}".format(new_rev_id)
+
+    # upgrade directive を上書きする
+    migration_script.upgrade_ops.ops = [order_columns(op) for op in migration_script.upgrade_ops.ops]
+
+
+def order_columns(op):
+    if not isinstance(op, ops.CreateTableOp):
+        return op
+
+    # order_columns
+    special_names = {"id": -100, "created_at": 1001, "updated_at": 1002}
+    cols_by_key = [
+        (
+            special_names.get(col.key, index) if isinstance(col, Column) else 2000,
+            col.copy(),
+        )
+        for index, col in enumerate(op.columns)
+    ]
+    columns_or_constraints: Sequence[Union[Column, Constraint]] = [
+        col for idx, col in sorted(cols_by_key, key=lambda entry: entry[0])
+    ]
+
+    # UniqueConstraint の columns_combination が重複した場合、一つに絞り込む
+    uc_columns_combinations = []
+    for index, column_or_constraint in enumerate(columns_or_constraints):
+        if isinstance(column_or_constraint, UniqueConstraint):
+            columns_combination = set([col.name for col in column_or_constraint.columns])
+            if columns_combination in uc_columns_combinations:
+                del columns_or_constraints[index]
+            else:
+                uc_columns_combinations.append(columns_combination)
+
+    op.columns = columns_or_constraints
+    return op
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -54,6 +118,7 @@ def run_migrations_offline() -> None:
         include_object=include_object,
         # 型変更を検知する
         compare_type=True,
+        process_revision_directives=process_revision_directives,
     )
 
     with context.begin_transaction():
@@ -82,6 +147,7 @@ def run_migrations_online() -> None:
             include_object=include_object,
             # 型変更を検知する
             compare_type=True,
+            process_revision_directives=process_revision_directives,
         )
 
         with context.begin_transaction():
