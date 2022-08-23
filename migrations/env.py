@@ -61,7 +61,7 @@ def process_revision_directives(context, revision, directives):
     migration_script.rev_id = "{0:04}".format(new_rev_id)
 
     # upgrade directive を上書きする
-    migration_script.upgrade_ops = [order_columns(op) for op in migration_script.upgrade_ops_list]
+    migration_script.upgrade_ops.ops = [order_columns(op) for op in migration_script.upgrade_ops.ops]
 
 
 def order_columns(op):
